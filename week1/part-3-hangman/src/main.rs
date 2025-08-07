@@ -36,5 +36,52 @@ fn main() {
     // Uncomment for debugging:
     // println!("random word: {}", secret_word);
 
-    // Your code here! :)
+    // Game Start
+    println!("Welcome to CS110L Hangman!");
+
+    let mut counter = 0;
+    let mut correct_guess_word_chars: Vec<char> = vec!['-'; secret_word_chars.len()];
+    let mut guesses = String::new();
+
+    loop {
+        let correct_guess_word: String = correct_guess_word_chars.iter().collect();
+        println!("The word so far is {}", correct_guess_word);
+        println!("You have guessed the following letters: {}", guesses);
+        println!("You have {} guesses left", NUM_INCORRECT_GUESSES - counter);
+        print!("Please guess a letter: ");
+        io::stdout().flush().unwrap(); // Forces the output to appear
+
+        let mut guess = String::new();
+        let _ = io::stdin().read_line(&mut guess);
+        let guess_letter = guess.chars().nth(0).expect("");
+        let mut is_guess_correct = false;
+
+        guesses.push_str(&guess_letter.to_string());
+
+
+        for (i, c) in secret_word_chars.iter().enumerate() {
+            if correct_guess_word_chars[i] == '-' && secret_word_chars[i] == guess_letter {
+                correct_guess_word_chars[i] = c.clone();
+                is_guess_correct = true;
+                println!("");
+                break;
+            }
+        }
+        
+        if !is_guess_correct {
+            counter += 1;
+            println!("Sorry, that letter is not in the word\n");
+        }
+
+        if !correct_guess_word_chars.contains(&'-') { break; }
+
+        if counter >= NUM_INCORRECT_GUESSES { break; }
+    }
+
+    // Game End
+    if counter >= NUM_INCORRECT_GUESSES {
+        println!("Sorry, you ran out of guesses!");
+    } else {
+        println!("Congratulations you guessed the secret word: {}!", secret_word);
+    }
 }

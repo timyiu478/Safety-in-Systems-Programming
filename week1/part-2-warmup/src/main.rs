@@ -7,15 +7,25 @@ fn main() {
 }
 
 fn add_n(v: Vec<i32>, n: i32) -> Vec<i32> {
-    unimplemented!()
+    let mut new_v: Vec<i32> = Vec::new();
+
+    for i in v.iter() {
+        new_v.push(i + n);
+    }
+
+    new_v
 }
 
 fn add_n_inplace(v: &mut Vec<i32>, n: i32) {
-    unimplemented!()
+    for x in v.iter_mut() {
+        *x += n;
+    }
 }
 
 fn dedup(v: &mut Vec<i32>) {
-    unimplemented!()
+    let mut seen = HashSet::new();
+    // clouse: https://doc.rust-lang.org/rust-by-example/fn/closures.html
+    v.retain(|x| seen.insert(*x));
 }
 
 #[cfg(test)]

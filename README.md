@@ -2,7 +2,12 @@
 
 The Repository contains the learning materials of the [Safety in Systems Programming](https://reberhardt.com/cs110l/spring-2020/) course by Ryan Eberhardt and Armin Namavari.
 
-This course is focused on safety and robustness in systems programming: Where do things often go wrong in computer systems? How can we avoid common pitfalls? We will use the Rust programming language as a vehicle to teach mental models and paradigms that have been shown to be helpful in preventing errors, and we will look at how these features have made their way back into C++.
+This course is focused on safety and robustness in systems programming: 
+
+- Where do things often go wrong in computer systems? 
+- How can we avoid common pitfalls? 
+- Use the Rust programming language as a vehicle to teach **mental models and paradigms** that have been shown to be helpful in preventing errors, and we will look at how these features have made their way back into C++.
+    - It's in Rust but not a Rust class
 
 ---
 

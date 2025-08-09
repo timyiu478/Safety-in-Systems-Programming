@@ -17,7 +17,7 @@ fn main() {
 
     match ps {
         Ok(Some(p)) => {
-            println!("Found pid {}", p.pid);
+            p.print();
         },
         Ok(None) =>  {
             println!("Target \"{}\" did not match any running PIDs or executables", target);

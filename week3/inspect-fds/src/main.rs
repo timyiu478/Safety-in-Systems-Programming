@@ -4,17 +4,27 @@ mod open_file;
 mod process;
 mod ps_utils;
 
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("Usage: {} <name or pid of target>", args[0]);
         std::process::exit(1);
     }
-    #[allow(unused)] // TODO: delete this line for Milestone 1
     let target = &args[1];
 
-    // TODO: Milestone 1: Get the target Process using psutils::get_target()
-    unimplemented!();
+    let ps = ps_utils::get_target(target);
+
+    match ps {
+        Ok(Some(p)) => {
+            println!("Found pid {}", p.pid);
+        },
+        Ok(None) =>  {
+            println!("Target \"{}\" did not match any running PIDs or executables", target);
+            std::process::exit(1);
+        },
+        Err(_) => { println!("Err, something went wrong!!"); }
+    }
 }
 
 #[cfg(test)]

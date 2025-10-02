@@ -13,7 +13,6 @@ This course is focused on safety and robustness in systems programming:
 
 # Programming Assigments
 
-| # | Title | Link | Tags |
-| - | - | - | - |
-| 1 | Hangman Game     | [Here](week1) | `CLI` |
-| 2 |  File Diff Tool   | [Here](week2) | `Ownership`, `Result`, `Option`, `LCS` |
+1. [Hangman Game](week1)
+1. [File Diff Tool](week2)
+1. [File Descriptor Inspector](week3/inspect-fds)

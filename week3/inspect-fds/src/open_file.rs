@@ -125,13 +125,20 @@ impl OpenFile {
     /// simple way to indicate that "hey, we weren't able to get the necessary information"
     /// without making a big deal of it.)
     pub fn from_fd(pid: usize, fd: usize) -> Option<OpenFile> {
+        let fd_path = format!("/proc/{}/fd/{}", pid, fd);
+        let fdinfo_path = format!("/proc/{}/fdinfo/{}", pid, fd);
+        let link_target = fs::read_link(fd_path).ok()?;
+        let fdinfo = fs::read_to_string(fdinfo_path).ok()?;
+        let name = OpenFile::path_to_name(link_target.to_str()?);
+        let cursor = OpenFile::parse_cursor(&fdinfo)?;
+        let access_mode = OpenFile::parse_access_mode(&fdinfo)?;
+        Some(OpenFile::new(name, cursor, access_mode))
     }
 
     /// This function returns the OpenFile's name with ANSI escape codes included to colorize
     /// pipe names. It hashes the pipe name so that the same pipe name will always result in the
     /// same color. This is useful for making program output more readable, since a user can
     /// quickly see all the fds that point to a particular pipe.
-    #[allow(unused)] // TODO: delete this line for Milestone 5
     pub fn colorized_name(&self) -> String {
         if self.name.starts_with("<pipe") {
             let mut hash = DefaultHasher::new();

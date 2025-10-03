@@ -1,14 +1,13 @@
 use std::collections::VecDeque;
-#[allow(unused_imports)]
+// #[allow(unused_imports)]
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
-#[allow(unused_imports)]
+// #[allow(unused_imports)]
 use std::{env, process, thread};
 
 /// Determines whether a number is prime. This function is taken from CS 110 factor.py.
 ///
 /// You don't need to read or understand this code.
-#[allow(dead_code)]
 fn is_prime(num: u32) -> bool {
     if num <= 1 {
         return false;
@@ -25,7 +24,6 @@ fn is_prime(num: u32) -> bool {
 /// from CS 110 factor.py.
 ///
 /// You don't need to read or understand this code.
-#[allow(dead_code)]
 fn factor_number(num: u32) {
     let start = Instant::now();
 
@@ -52,7 +50,6 @@ fn factor_number(num: u32) {
 }
 
 /// Returns a list of numbers supplied via argv.
-#[allow(dead_code)]
 fn get_input_numbers() -> VecDeque<u32> {
     let mut numbers = VecDeque::new();
     for arg in env::args().skip(1) {
@@ -71,12 +68,29 @@ fn main() {
     println!("Farm starting on {} CPUs", num_threads);
     let start = Instant::now();
 
-    // TODO: call get_input_numbers() and store a queue of numbers to factor
+    // call get_input_numbers() and store a queue of numbers to factor
+    let nums = Arc::new(Mutex::new(get_input_numbers()));
 
-    // TODO: spawn `num_threads` threads, each of which pops numbers off the queue and calls
+    // spawn `num_threads` threads, each of which pops numbers off the queue and calls
     // factor_number() until the queue is empty
+    let mut handles = vec![];
+    for _ in 0..num_threads {
+        let nums_clone = Arc::clone(&nums); // create a shallow copy of nums
+        // use move to give the ownership of nums_clone
+        let handle = thread::spawn(move || {
+            let n = nums_clone.lock().unwrap().pop_front();
+            match n {
+                Some(v) => { factor_number(v); }
+                None => {}
+            }
+        });
+        handles.push(handle);
+    }
 
-    // TODO: join all the threads you created
+    // join all the threads you created
+    for handle in handles {
+        handle.join().unwrap();
+    }
 
     println!("Total execution time: {:?}", start.elapsed());
 }

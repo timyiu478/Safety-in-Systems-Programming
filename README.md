@@ -14,6 +14,7 @@ This course is focused on safety and robustness in systems programming:
 # Programming Assigments
 
 1. [Hangman Game](week1)
-1. [File Diff Tool](week2)
+1. [File Diff Tool](week2/rdiff)
 1. [File Descriptor Inspector](week3/inspect-fds)
 1. [Generic Linked List](week3/linked_list)
+1. [Farm meets multithreading](week5/farm)

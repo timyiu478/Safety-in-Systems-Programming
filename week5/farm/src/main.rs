@@ -89,7 +89,7 @@ fn main() {
 
     // join all the threads you created
     for handle in handles {
-        handle.join().unwrap();
+        handle.join().expect("Thread panicked");
     }
 
     println!("Total execution time: {:?}", start.elapsed());

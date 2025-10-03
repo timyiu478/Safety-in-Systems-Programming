@@ -2,7 +2,8 @@ use nix::sys::ptrace;
 use nix::sys::signal;
 use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
-use std::process::Child;
+use std::process::{Child, Command};
+use std::os::unix::process::CommandExt;
 
 pub enum Status {
     /// Indicates inferior stopped. Contains the signal that stopped the process, as well as the
@@ -34,12 +35,19 @@ impl Inferior {
     /// Attempts to start a new inferior process. Returns Some(Inferior) if successful, or None if
     /// an error is encountered.
     pub fn new(target: &str, args: &Vec<String>) -> Option<Inferior> {
-        // TODO: implement me!
-        println!(
-            "Inferior::new not implemented! target={}, args={:?}",
-            target, args
-        );
-        None
+        
+        let mut binding = Command::new(target);
+        let mut cmd = binding.args(args);
+        unsafe {
+            cmd = cmd.pre_exec(|| child_traceme());
+        }
+        let ch = cmd.spawn().ok()?;
+
+        //verify that it stops with signal SIGTRAP 
+        // https://linux.die.net/man/2/waitpid
+        waitpid(Pid::from_raw(ch.id() as i32), Some(WaitPidFlag::WSTOPPED)).ok()?;
+
+        Some(Inferior { child: ch })
     }
 
     /// Returns the pid of this inferior.
@@ -59,5 +67,27 @@ impl Inferior {
             }
             other => panic!("waitpid returned unexpected status: {:?}", other),
         })
+    }
+
+    pub fn print_backtrace(&self, debug_data: &DwarfData) -> Result<(), nix::Error> {
+        // print out the value of the %rip register.
+        let regs = ptrace::getregs(self.pid())?;
+        let rip = regs.rip as usize;
+        // TODO
+        // DwarfData::get_addr_for_line(
+        // DwarfData::get_function_from_addr
+
+        return Ok(());
+    }
+
+    // Continues the inferior process.
+    pub fn cont(&self) -> Result<Status, nix::Error> {
+        let _ = ptrace::cont(self.pid(), None);
+        self.wait(None)
+    }
+
+    pub fn kill(&mut self) -> Result<Status, nix::Error> {
+        let _ = self.child.kill();
+        self.wait(None)
     }
 }

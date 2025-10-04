@@ -6,6 +6,7 @@ This project will give us practice with multiprocessing in Rust, and will give u
 
 1. run, stop, continue, kill the traced process
 1. print a stack trace for a paused program
+1. set the breakpoints
 
 ## Commands
 
@@ -14,3 +15,4 @@ This project will give us practice with multiprocessing in Rust, and will give u
 1. `q/quit`: exit the debugger, killing any traced program first
 1. `Ctrl-C`: stop the traced program
 1. `bt/back/backtrace`: print a stack trace for the traced program if it is stopped
+1. `b/break`: set a breakpoint on the address or symbol

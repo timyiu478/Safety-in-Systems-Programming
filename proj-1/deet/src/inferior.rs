@@ -4,6 +4,7 @@ use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 use nix::unistd::Pid;
 use std::process::{Child, Command};
 use std::os::unix::process::CommandExt;
+use crate::dwarf_data::DwarfData;
 
 pub enum Status {
     /// Indicates inferior stopped. Contains the signal that stopped the process, as well as the
@@ -70,12 +71,11 @@ impl Inferior {
     }
 
     pub fn print_backtrace(&self, debug_data: &DwarfData) -> Result<(), nix::Error> {
-        // print out the value of the %rip register.
         let regs = ptrace::getregs(self.pid())?;
         let rip = regs.rip as usize;
-        // TODO
-        // DwarfData::get_addr_for_line(
-        // DwarfData::get_function_from_addr
+        let line_number = debug_data.get_addr_for_line(None, rip).expect("unable to find line number from rip");
+        let function_name = debug_data.get_function_from_addr(rip).expect("unable to find function name from rip");
+        println!("{} ({})", function_name, line_number);
 
         return Ok(());
     }

@@ -1,7 +1,7 @@
 use crate::debugger_command::DebuggerCommand;
 use crate::inferior::Inferior;
 use crate::inferior::Status;
-use crate::dwarf_data::{DwarfData, Error as DwarfError}
+use crate::dwarf_data::{DwarfData, Error as DwarfError};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use std::process::exit;
@@ -126,7 +126,7 @@ impl Debugger {
                 }
                 DebuggerCommand::Backtrace => { 
                     if let Some(inferior) = self.inferior.as_mut() {
-                        let _ = inferior.print_backtrace(self.debug_data);
+                        let _ = inferior.print_backtrace(&self.debug_data);
                     }
                 }
             }

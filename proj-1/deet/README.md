@@ -114,3 +114,5 @@ Stopped at ./samples/sleepy_print.c:13
 (deet) cont
 Child exited (status 0)
 ```
+
+Our debugger successfully set breakpoints before and after the execution of the program, resume execution, and print out the numbers as expected.

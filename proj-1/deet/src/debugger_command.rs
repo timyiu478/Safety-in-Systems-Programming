@@ -1,8 +1,11 @@
+use substring::Substring;
+
 pub enum DebuggerCommand {
     Quit,
     Run(Vec<String>),
     Continue,
     Backtrace,
+    Break(String),
 }
 
 impl DebuggerCommand {
@@ -17,6 +20,11 @@ impl DebuggerCommand {
             },
             "c" | "cont" => Some(DebuggerCommand::Continue),
             "bt" | "back" | "backtrace" => Some(DebuggerCommand::Backtrace),
+            "b" | "break" => { 
+                let str = tokens[1].to_string();
+                assert!(str.substring(0, 1) == "*");
+                Some(DebuggerCommand::Break(str.substring(1, str.len()).to_string()))
+            },
             // Default case:
             _ => None,
         }

@@ -4,13 +4,24 @@ use crate::inferior::Status;
 use crate::dwarf_data::{DwarfData, Error as DwarfError};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use rustyline::history::FileHistory;
 use std::process::exit;
+
+fn parse_address(addr: &str) -> Option<usize> {
+    let addr_without_0x = if addr.to_lowercase().starts_with("0x") {
+        &addr[2..]
+    } else {
+        &addr
+    };
+    usize::from_str_radix(addr_without_0x, 16).ok()
+}
 
 pub struct Debugger {
     target: String,
     history_path: String,
     debug_data: DwarfData,
-    readline: Editor<()>,
+    breakpoints: Vec<usize>,
+    readline: Editor<(), FileHistory>,
     inferior: Option<Inferior>,
 }
 
@@ -30,8 +41,10 @@ impl Debugger {
             }
         };
 
+        debug_data.print();
+
         let history_path = format!("{}/.deet_history", std::env::var("HOME").unwrap());
-        let mut readline = Editor::<()>::new();
+        let mut readline = Editor::<(), FileHistory>::new().expect("Failed to create readline editor");
         // Attempt to load history from ~/.deet_history if it exists
         let _ = readline.load_history(&history_path);
 
@@ -39,6 +52,7 @@ impl Debugger {
             target: target.to_string(),
             history_path,
             debug_data,
+            breakpoints: Vec::new(),
             readline,
             inferior: None,
         }
@@ -54,7 +68,7 @@ impl Debugger {
                         let _ = inferior.kill();
                         self.inferior = None;
                     }
-                    if let Some(inferior) = Inferior::new(&self.target, &args) {
+                    if let Some(inferior) = Inferior::new(&self.target, &args, &self.breakpoints) {
                         // Create the inferior
                         self.inferior = Some(inferior);
                         // make the inferior run
@@ -75,6 +89,7 @@ impl Debugger {
                                     }
                                     Status::Stopped(signal, _rip) => {
                                         println!("Child stopped (signal {})", signal);
+                                        let _ = self.inferior.as_mut().unwrap().print_stopped_location(&self.debug_data);
                                     }
                                 }
                             }
@@ -113,6 +128,7 @@ impl Debugger {
                                     }
                                     Status::Stopped(signal, _rip) => {
                                         println!("Child stopped (signal {})", signal);
+                                        let _ = self.inferior.as_mut().unwrap().print_stopped_location(&self.debug_data);
                                     }
                                 }
                             }
@@ -129,9 +145,21 @@ impl Debugger {
                         let _ = inferior.print_backtrace(&self.debug_data);
                     }
                 }
+                DebuggerCommand::Break(address) => {
+                    let addr = parse_address(&address).expect("Invalid address");
+                    if let Some(inferior) = self.inferior.as_mut() {
+                        inferior.set_breakpoint(addr).expect("Failed to set breakpoint");
+                        println!("Set breakpoint {} at {:#x}", inferior.get_breakpoints_count() - 1, addr);
+                    } else {
+                        // add to breakpoints list if the inferior is not running
+                        self.breakpoints.push(addr);
+                        println!("Set breakpoint {} at {:#x}", self.breakpoints.len() - 1, addr);
+                    }
+                }
             }
         }
     }
+
 
     /// This function prompts the user to enter a command, and continues re-prompting until the user
     /// enters a valid command. It uses DebuggerCommand::from_tokens to do the command parsing.
@@ -156,7 +184,7 @@ impl Debugger {
                     if line.trim().len() == 0 {
                         continue;
                     }
-                    self.readline.add_history_entry(line.as_str());
+                    let _ = self.readline.add_history_entry(line.as_str());
                     if let Err(err) = self.readline.save_history(&self.history_path) {
                         println!(
                             "Warning: failed to save history file at {}: {}",

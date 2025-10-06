@@ -7,6 +7,19 @@ Constraints:
 
 ![](assets/idea.png)
 
+Why use 2 channels, one for inputs, one for outputs?
+
+If we only use one channel for both inputs and outputs, 
+
+1. we would have to deal with the complexity of distinguishing between input and output messages
+1. cannot control who is receiving the messages, the workers or the main thread
+1. hard to break the loop of receiving message from channel when all tasks are done
+
+If we use two channels, one for inputs and one for outputs,
+
+1. we can easily distinguish between input and output messages
+1. control the flow of messages, workers only receive from input channel, main thread only receives from output channel
+
 # Example Run
 
 ```bash

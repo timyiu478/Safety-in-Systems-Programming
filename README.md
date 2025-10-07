@@ -33,7 +33,7 @@ Features:
 
 1. Random load balancing
 
-Implementation: [Work In Progress](proj-1/balancebeam)
+Implementation: [Work In Progress](proj-2/balancebeam)
 
 ---
 

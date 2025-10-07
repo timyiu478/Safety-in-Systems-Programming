@@ -25,6 +25,16 @@ Features:
 
 Implementation: [Here](proj-1/deet)
 
+## 2. Load Balancer
+
+This project will give us practice with multithreading, asynchronous programming, and performance optimization by building a load balancer using [tokio](https://docs.rs/tokio/1.0.0/tokio/index.html) runtime.
+
+Features:
+
+1. Random load balancing
+
+Implementation: [Work In Progress](proj-1/balancebeam)
+
 ---
 
 # Programming Assigments

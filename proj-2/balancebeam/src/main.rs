@@ -101,6 +101,8 @@ async fn connect_to_upstream(state: &ProxyState) -> Result<TcpStream, std::io::E
         Err(err)
     })
     // TODO: implement failover (milestone 3)
+    // If connecting to the upstream fails, we can assume that the upstream server is dead, and we can pick a different upstream server.
+
 }
 
 async fn send_response(client_conn: &mut TcpStream, response: &http::Response<Vec<u8>>) {

@@ -1,10 +1,14 @@
 mod request;
 mod response;
 
+use std::collections::HashSet;
 use clap::Parser;
 use rand::{Rng, SeedableRng};
+use tokio::sync::{Mutex};
 use tokio::net::{TcpListener, TcpStream};
+use tokio::time::{timeout, Duration};
 use std::sync::Arc;
+use reqwest;
 
 /// Contains information parsed from the command-line invocation of balancebeam. The Clap macros
 /// provide a fancy way to automatically construct a command-line argument parser.
@@ -44,6 +48,8 @@ struct ProxyState {
     max_requests_per_minute: usize,
     /// Addresses of servers that we are proxying to
     upstream_addresses: Vec<String>,
+    /// Failed upstreams 
+    failed_upstreams: Arc<Mutex<HashSet<String>>>,
 }
 
 #[tokio::main]
@@ -80,6 +86,15 @@ async fn main() {
         active_health_check_interval: options.active_health_check_interval,
         active_health_check_path: options.active_health_check_path,
         max_requests_per_minute: options.max_requests_per_minute,
+        // tx_shutdown: broadcast::channel(16).0,
+        failed_upstreams: Arc::new(Mutex::new(HashSet::new())),
+    });
+
+
+    // Start active health check task
+    let state_clone = Arc::clone(&state);
+    tokio::spawn(async move {
+        active_health_check(&state_clone).await;
     });
 
     loop {
@@ -93,15 +108,59 @@ async fn main() {
 }
 
 async fn connect_to_upstream(state: &ProxyState) -> Result<TcpStream, std::io::Error> {
-    let mut rng = rand::rngs::StdRng::from_entropy();
-    let upstream_idx = rng.gen_range(0..state.upstream_addresses.len());
-    let upstream_ip = &state.upstream_addresses[upstream_idx];
-    TcpStream::connect(upstream_ip).await.or_else(|err| {
-        log::error!("Failed to connect to upstream {}: {}", upstream_ip, err);
-        Err(err)
-    })
-    // TODO: implement failover (milestone 3)
     // If connecting to the upstream fails, we can assume that the upstream server is dead, and we can pick a different upstream server.
+    let mut failed = state.failed_upstreams.lock().await; 
+    while failed.len() < state.upstream_addresses.len() {
+        let candidates: Vec<_> = state.upstream_addresses.iter()
+            .filter(|addr| !failed.contains(*addr))
+            .collect();
+        let mut rng = rand::rngs::StdRng::from_entropy();
+        let upstream_idx = rng.gen_range(0..candidates.len());
+        let upstream_ip = &candidates[upstream_idx];
+        match TcpStream::connect(upstream_ip).await {
+            Ok(stream) => return Ok(stream),
+            Err(err) => {
+                log::error!("Failed to connect to upstream {}: {}", upstream_ip, err);
+                // Mark this server as failed
+                failed.insert(upstream_ip.to_string());
+                // Broadcast the failure to other tasks
+                // let _ = state.tx_shutdown.send((upstream_ip.to_string(), false));
+            }
+        }
+    }
+    log::error!("Failed to connect to upstream: all upstream servers are down");
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "All upstream servers are down"))
+}
+
+// Active health checks
+async fn active_health_check(state: &ProxyState) {
+    let path = state.active_health_check_path.clone();
+
+    loop {
+        tokio::time::sleep(Duration::from_secs(state.active_health_check_interval as u64)).await;
+        let addresses = state.upstream_addresses.clone();
+        for addr in addresses {
+            let path = path.clone();
+            let failed_upstreams = state.failed_upstreams.clone();
+            tokio::spawn(async move {
+                let check_url = format!("http://{}{}", addr, path);
+                let client = reqwest::Client::new();
+                let result = timeout(Duration::from_secs(1), client.get(&check_url).send()).await;
+                match result {
+                    Ok(Ok(response)) if response.status().is_success() => {
+                        // Server is healthy
+                        let mut failed = failed_upstreams.lock().await;
+                        failed.remove(&addr)
+                    }
+                    _ => {
+                        // Server is unhealthy
+                        let mut failed = failed_upstreams.lock().await;
+                        failed.insert(addr.clone())
+                    }
+                }
+            });
+        }
+    }
 
 }
 

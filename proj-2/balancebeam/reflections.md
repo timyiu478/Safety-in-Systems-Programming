@@ -1,1 +1,1 @@
-* controlling references to objects are hard
+* Controlling references to objects is hard

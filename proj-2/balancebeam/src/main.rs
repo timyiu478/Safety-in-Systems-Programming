@@ -1,12 +1,12 @@
 mod request;
 mod response;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use clap::Parser;
 use rand::{Rng, SeedableRng};
 use tokio::sync::{Mutex};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::{timeout, Duration};
+use tokio::time::{timeout, Duration, Instant};
 use std::sync::Arc;
 use reqwest;
 
@@ -38,18 +38,17 @@ struct CmdOptions {
 /// You should add fields to this struct in later milestones.
 struct ProxyState {
     /// How frequently we check whether upstream servers are alive (Milestone 4)
-    #[allow(dead_code)]
     active_health_check_interval: usize,
     /// Where we should send requests when doing active health checks (Milestone 4)
-    #[allow(dead_code)]
     active_health_check_path: String,
     /// Maximum number of requests an individual IP can make in a minute (Milestone 5)
-    #[allow(dead_code)]
     max_requests_per_minute: usize,
     /// Addresses of servers that we are proxying to
     upstream_addresses: Vec<String>,
     /// Failed upstreams 
     failed_upstreams: Arc<Mutex<HashSet<String>>>,
+    // Rate limiting counter
+    rl_counter: Arc<Mutex<HashMap<String, (usize, Instant)>>>,
 }
 
 #[tokio::main]
@@ -88,6 +87,7 @@ async fn main() {
         max_requests_per_minute: options.max_requests_per_minute,
         // tx_shutdown: broadcast::channel(16).0,
         failed_upstreams: Arc::new(Mutex::new(HashSet::new())),
+        rl_counter: Arc::new(Mutex::new(std::collections::HashMap::new())),
     });
 
 
@@ -177,9 +177,39 @@ async fn send_response(client_conn: &mut TcpStream, response: &http::Response<Ve
     }
 }
 
+async fn is_rate_limit_allowed(client_ip: &str, state: &ProxyState) -> bool {
+    if state.max_requests_per_minute == 0 {
+        return true;
+    }
+
+    let mut rl_counter = state.rl_counter.lock().await;
+
+    let entry = rl_counter.entry(client_ip.to_string()).or_insert((0, Instant::now()));
+
+    let (ref mut current_count, ref mut current_start) = *entry;
+
+    // Reset the counter if a minute has passed
+    if current_start.elapsed() >= Duration::from_secs(60) {
+        *current_count = 0;
+        *current_start = Instant::now();
+    }
+
+    *current_count += 1;
+
+    *current_count <= state.max_requests_per_minute
+}
+
 async fn handle_connection(mut client_conn: TcpStream, state: &ProxyState) {
     let client_ip = client_conn.peer_addr().unwrap().ip().to_string();
     log::info!("Connection received from {}", client_ip);
+
+    // Rate limiting
+    if !is_rate_limit_allowed(&client_ip, state).await {
+        log::info!("Rate limit exceeded for {}", client_ip);
+        let response = response::make_http_error(http::StatusCode::TOO_MANY_REQUESTS);
+        send_response(&mut client_conn, &response).await;
+        return;
+    }
 
     // Open a connection to a random destination server
     let mut upstream_conn = match connect_to_upstream(state).await {
